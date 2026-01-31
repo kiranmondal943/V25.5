@@ -153,57 +153,73 @@ context = {
     "map_iframe": map_iframe or "",
 }
 
-# Build preview
+# --- Instant Preview (robust, safe) ---
+import traceback
+
 st.markdown("## ⚡ Instant Preview")
 st.markdown("Select Page to Preview")
 
-# Horizontal selector for pages (Home, About, Contact, Privacy, Terms)
-# Uses simple radio which renders as horizontal pills in recent Streamlit versions.
-# If you are on an older Streamlit, remove `horizontal=True` and it will fall back to vertical radio.
-preview_page = st.radio(
-    "",
-    ("Home", "About", "Contact", "Privacy", "Terms"),
-    horizontal=True,
-    label_visibility="collapsed",
-)
+# Page selector (Home / About / Contact / Privacy / Terms)
+preview_page = st.radio("", ("Home", "About", "Contact", "Privacy", "Terms"), horizontal=True, label_visibility="collapsed")
 
-# Device preview toggles (keeps existing device selection concept)
+# Device selector
 device = st.radio("Preview device", ["Desktop", "Tablet", "Mobile"], horizontal=True)
 height_map = {"Desktop": 800, "Tablet": 700, "Mobile": 600}
 preview_height = height_map.get(device, 800)
 
-# Render the selected page server-side so the preview matches exported pages exactly
-# Use builder.render_home and builder.render_about for full pages.
-# For Privacy / Terms we render a small standalone HTML wrapper so it appears in preview & export.
-ctx = context  # the context dictionary you already prepared earlier
-
-if preview_page == "Home":
-    preview_html = builder.render_home(ctx, is_home=True)
-elif preview_page == "About":
-    preview_html = builder.render_about(ctx)
-elif preview_page == "Contact":
-    # Contact page uses the About template in this generator; adjust if you later add a contact template.
-    # We can also create a dedicated contact template later if you prefer.
-    preview_html = builder.render_about(ctx)
-elif preview_page == "Privacy":
-    # Render a simple privacy page wrapper (matches exported privacy.html)
-    preview_html = builder._wrap_basic("Privacy Policy", ctx.get("priv_body", ""))
-elif preview_page == "Terms":
-    preview_html = builder._wrap_basic("Terms & Conditions", ctx.get("terms_body", ""))
+# Make sure context exists
+if "context" not in globals():
+    st.error("Preview cannot render because the `context` variable is not defined yet. Make sure inputs are above the preview block and that you did not accidentally reorder code.")
 else:
-    preview_html = builder.render_home(ctx, is_home=True)
+    # Ensure builder exists (create if missing)
+    try:
+        builder  # check existence
+    except NameError:
+        from generator.site_builder import SiteBuilder
+        builder = SiteBuilder()
 
-# Show the preview HTML in the selected device frame
-st.components.v1.html(preview_html, height=preview_height, scrolling=True)
+    # HINT: use local 'ctx' variable so templates don't accidentally mutate original
+    ctx = context
 
-# Keep the export button below the preview
-if st.button("🚀 DEPLOY & DOWNLOAD THE WORLD'S BEST BUSINESS ASSET"):
-    import io
-    z_b = io.BytesIO()
-    builder.build_zip(ctx, z_b)
-    z_b.seek(0)
-    filename = f"{(ctx.get('biz_name') or 'site').lower().replace(' ','_')}_final.zip"
-    st.download_button("📥 DOWNLOAD PLATINUM ASSET", z_b, file_name=filename)
+    # Try to render the requested page and catch exceptions to display tracebacks
+    try:
+        if preview_page == "Home":
+            preview_html = builder.render_home(ctx, is_home=True)
+        elif preview_page == "About":
+            preview_html = builder.render_about(ctx)
+        elif preview_page == "Contact":
+            # Use about template as contact placeholder; change if you add a contact template later
+            preview_html = builder.render_about(ctx)
+        elif preview_page == "Privacy":
+            preview_html = builder._wrap_basic("Privacy Policy", ctx.get("priv_body", ""))
+        elif preview_page == "Terms":
+            preview_html = builder._wrap_basic("Terms & Conditions", ctx.get("terms_body", ""))
+        else:
+            preview_html = builder.render_home(ctx, is_home=True)
+
+    except Exception as e:
+        # Show helpful error info in the Streamlit app for debugging
+        st.error("Preview rendering error: " + str(e))
+        st.text("Full traceback (for debugging):")
+        st.text(traceback.format_exc())
+        # Provide a minimal fallback preview so the iframe component doesn't fail
+        preview_html = "<div style='padding:24px;color:#b91c1c;'>Error rendering preview (see details above).</div>"
+
+    # Render preview HTML
+    st.components.v1.html(preview_html, height=preview_height, scrolling=True)
+
+    # Keep Export button below preview (safe to call builder.build_zip even if preview failed)
+    if st.button("🚀 DEPLOY & DOWNLOAD THE WORLD'S BEST BUSINESS ASSET"):
+        import io
+        z_b = io.BytesIO()
+        try:
+            builder.build_zip(ctx, z_b)
+            z_b.seek(0)
+            filename = f"{(ctx.get('biz_name') or 'site').lower().replace(' ','_')}_final.zip"
+            st.download_button("📥 DOWNLOAD PLATINUM ASSET", z_b, file_name=filename)
+        except Exception as e:
+            st.error("Export failed: " + str(e))
+            st.text(traceback.format_exc())
 
 # Export zip
 if st.button("🚀 DEPLOY & DOWNLOAD THE WORLD'S BEST BUSINESS ASSET"):

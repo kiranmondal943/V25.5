@@ -154,11 +154,56 @@ context = {
 }
 
 # Build preview
-builder = SiteBuilder()
-device = st.radio("Preview device", ["Desktop","Tablet","Mobile"], horizontal=True)
-preview_html = builder.render_home(context, is_home=True)
-height_map={"Desktop":800,"Tablet":700,"Mobile":600}
-st.components.v1.html(preview_html, height=height_map.get(device,800), scrolling=True)
+st.markdown("## ⚡ Instant Preview")
+st.markdown("Select Page to Preview")
+
+# Horizontal selector for pages (Home, About, Contact, Privacy, Terms)
+# Uses simple radio which renders as horizontal pills in recent Streamlit versions.
+# If you are on an older Streamlit, remove `horizontal=True` and it will fall back to vertical radio.
+preview_page = st.radio(
+    "",
+    ("Home", "About", "Contact", "Privacy", "Terms"),
+    horizontal=True,
+    label_visibility="collapsed",
+)
+
+# Device preview toggles (keeps existing device selection concept)
+device = st.radio("Preview device", ["Desktop", "Tablet", "Mobile"], horizontal=True)
+height_map = {"Desktop": 800, "Tablet": 700, "Mobile": 600}
+preview_height = height_map.get(device, 800)
+
+# Render the selected page server-side so the preview matches exported pages exactly
+# Use builder.render_home and builder.render_about for full pages.
+# For Privacy / Terms we render a small standalone HTML wrapper so it appears in preview & export.
+ctx = context  # the context dictionary you already prepared earlier
+
+if preview_page == "Home":
+    preview_html = builder.render_home(ctx, is_home=True)
+elif preview_page == "About":
+    preview_html = builder.render_about(ctx)
+elif preview_page == "Contact":
+    # Contact page uses the About template in this generator; adjust if you later add a contact template.
+    # We can also create a dedicated contact template later if you prefer.
+    preview_html = builder.render_about(ctx)
+elif preview_page == "Privacy":
+    # Render a simple privacy page wrapper (matches exported privacy.html)
+    preview_html = builder._wrap_basic("Privacy Policy", ctx.get("priv_body", ""))
+elif preview_page == "Terms":
+    preview_html = builder._wrap_basic("Terms & Conditions", ctx.get("terms_body", ""))
+else:
+    preview_html = builder.render_home(ctx, is_home=True)
+
+# Show the preview HTML in the selected device frame
+st.components.v1.html(preview_html, height=preview_height, scrolling=True)
+
+# Keep the export button below the preview
+if st.button("🚀 DEPLOY & DOWNLOAD THE WORLD'S BEST BUSINESS ASSET"):
+    import io
+    z_b = io.BytesIO()
+    builder.build_zip(ctx, z_b)
+    z_b.seek(0)
+    filename = f"{(ctx.get('biz_name') or 'site').lower().replace(' ','_')}_final.zip"
+    st.download_button("📥 DOWNLOAD PLATINUM ASSET", z_b, file_name=filename)
 
 # Export zip
 if st.button("🚀 DEPLOY & DOWNLOAD THE WORLD'S BEST BUSINESS ASSET"):

@@ -1,0 +1,56 @@
+{% extends "base.html.j2" %}
+{% block body %}
+  {% if layout_dna == "Industrial Titan" %}
+    <section class="hero" style="background:linear-gradient(180deg,#f8fafc,#ffffff);">
+      <div class="container"><h1 style="font-size:44px;margin:0 0 12px 0;letter-spacing:0.01em">{{ hero_h }}</h1><p style="margin:0 0 18px 0;color:#64748b">{{ seo_d }}</p><a class="btn" href="#inventory">Access Inventory</a></div>
+    </section>
+  {% elif layout_dna == "Classic Royal" %}
+    <section class="hero" style="background:linear-gradient(90deg,#fffaf0,#ffffff);"><div class="container"><h1 style="font-family:'Playfair Display',serif;font-size:48px;margin:0 0 12px 0">{{ hero_h }}</h1><p style="margin:0 0 18px 0;color:#64748b;font-style:italic">{{ seo_d }}</p><a class="btn" href="#inventory">Enter Showroom</a></div></section>
+  {% else %}
+    <section class="hero"><div class="container"><h1 style="font-size:36px;margin:0 0 12px 0">{{ hero_h }}</h1><p style="margin:0 0 18px 0;color:#64748b">{{ seo_d }}</p><a class="btn" href="#inventory">Explore Inventory</a></div></section>
+  {% endif %}
+
+  <main class="container" id="main">
+    <section style="padding:40px 0"><h2>Our Services</h2><div class="grid" style="margin-top:16px">{% for s in biz_serv %}<div class="card"><h3 style="margin:0 0 8px 0;color:var(--p)">{{ s }}</h3><p style="color:#64748b">Verified technical solution.</p></div>{% endfor %}</div></section>
+
+    <section id="inventory" style="padding:40px 0"><h2>Live Inventory</h2><div id="live-data-container" class="grid" style="margin-top:16px">
+      {% if products and products|length > 0 %}
+        {% for p in products %}
+          <div class="product-card card" style="cursor:pointer" data-name="{{ p.name|e }}" data-price="{{ p.price|e }}" data-desc="{{ p.desc|e }}" data-img="{{ p.img|e }}" onclick="openProductModal(this)">
+            <img src="{{ p.img or custom_feat }}" alt="{{ p.name|e }}" />
+            <h3 style="margin:12px 0 6px 0;color:var(--p)">{{ p.name }}</h3>
+            <p style="margin:0 0 8px 0;color:#334155">{{ p.desc }}</p>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+              <div style="font-weight:800;color:var(--s)">{{ p.price }}</div>
+              <a class="btn" href="https://wa.me/{{ biz_phone_wa }}?text={{ ('Hello ' + biz_name + ' - I am interested in ' + p.name) | url_encode }}" target="_blank" style="margin-left:auto">WhatsApp</a>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="card" style="padding:24px;color:#64748b">No products found. Provide a published CSV link in the admin.</div>
+      {% endif %}
+    </div></section>
+
+    <section style="padding:40px 0"><h2>About</h2><div style="color:#334155">{{ about_txt | safe }}</div></section>
+
+    {% if map_iframe %}
+    <section style="padding:40px 0"><h2>Location</h2><div>{{ map_iframe | safe }}</div></section>
+    {% endif %}
+  </main>
+
+  <script>
+    function openProductModal(el){
+      const name = el.dataset.name || '';
+      const price = el.dataset.price || '';
+      const desc = el.dataset.desc || '';
+      const img = el.dataset.img || '';
+      const modal = document.getElementById('modal');
+      const mbody = document.getElementById('m-body');
+      mbody.innerHTML = `<div style="display:flex;gap:18px;flex-wrap:wrap">
+        <div style="flex:1;min-width:260px"><img src="${img}" style="width:100%;height:auto;border-radius:10px;object-fit:cover" /></div>
+        <div style="flex:1;min-width:260px"><h2 style="margin-top:0">${name}</h2><div style="font-weight:800;color:var(--s);margin-bottom:8px">${price}</div><p style="color:#334155">${desc}</p><div style="margin-top:16px"><a class="btn" href="https://wa.me/{{ biz_phone_wa }}?text=${encodeURIComponent('Hello {{ biz_name }} - I am interested in ' + name)}" target="_blank">WhatsApp</a></div></div></div>`;
+      modal.style.display = 'flex';
+      window.scrollTo(0,0);
+    }
+  </script>
+{% endblock %}
